@@ -9,7 +9,7 @@
 				"-g",
 				"${file}",
 				"-o",
-				"${fileDirname}/${fileBasenameNoExtension}",
+				"${fileDirname}/build/${fileBasenameNoExtension}",
 				"`pkg-config",
 				"--cflags",
 				"--libs",
