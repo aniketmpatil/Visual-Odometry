@@ -85,8 +85,8 @@ void getKeyPoints(Mat inputImage, vector<KeyPoint>& keyPoints) {
 
 int main(int argc, char **argv) {
 
-    Mat left = imread("images/left.jpeg");
-    Mat right = imread("images/right.jpeg");
+    Mat left = imread("testing/images/left.jpeg");
+    Mat right = imread("testing/images/right.jpeg");
     vector<KeyPoint> keyPointVector1, keyPointVector2;
     Mat descriptors1,descriptors2;
     Ptr<FeatureDetector> detector = ORB::create();
