@@ -124,8 +124,8 @@ int main(int argc, char **argv) {
     vector<vector<DMatch>> matchesKnnFlann;
     // vector<DMatch> matchesKnnFlann;
     t1 = chrono::steady_clock::now();
-    matcherFlann.knnMatch(descriptors1, descriptors2, matchesKnnFlann, 1);
-    // matcherFlann.match(descriptors1, descriptors2, matchesFlann);
+    // matcherFlann.knnMatch(descriptors1, descriptors2, matchesKnnFlann, 1);
+    matcherFlann.match(descriptors1, descriptors2, matchesFlann);
 
     t2 = chrono::steady_clock::now();
     time_used = chrono::duration_cast<chrono::duration<double> > (t2 - t1);
@@ -152,23 +152,23 @@ int main(int argc, char **argv) {
             goodMatchBrute.push_back(matchesBrute[i]);
         }
     }
-    cout << matchesKnnFlann.size() << endl;
-    size_t size = matchesKnnFlann.size();
-    for(auto i = 0; i < size; i++) {
-        cout << "a";
-        if(matchesKnnFlann[i][0].distance < 0.7f * matchesKnnFlann[i][1].distance) {
-            cout << endl;
-            cout << "a" << endl;
-            goodMatchFlann.push_back(matchesKnnFlann[i][0]);
-            cout << endl;
-            cout << "a" << endl;
-        }
-    }
-    // for(int i = 0; i < matchesFlann.size(); i++) {
-    //     if(matchesFlann[i].distance <= max(2 * min_dist_flann, 30.0)) {
-    //         goodMatchFlann.push_back(matchesFlann[i]);
+    // cout << matchesKnnFlann.size() << endl;
+    // size_t size = matchesKnnFlann.size();
+    // for(auto i = 0; i < size; i++) {
+    //     cout << "a";
+    //     if(matchesKnnFlann[i][0].distance < 0.7f * matchesKnnFlann[i][1].distance) {
+    //         cout << endl;
+    //         cout << "a" << endl;
+    //         goodMatchFlann.push_back(matchesKnnFlann[i][0]);
+    //         cout << endl;
+    //         cout << "a" << endl;
     //     }
     // }
+    for(int i = 0; i < matchesFlann.size(); i++) {
+        if(matchesFlann[i].distance <= max(2 * min_dist_flann, 30.0)) {
+            goodMatchFlann.push_back(matchesFlann[i]);
+        }
+    }
     // for(auto i = 0; i < matchesKnnFlann.size() - 1; i++) {
     //     if(matchesKnnFlann[i].distance < 0.5f * matchesKnnFlann[i+1].distance) {
     //         goodMatchFlann.push_back(matchesKnnFlann[i]);
