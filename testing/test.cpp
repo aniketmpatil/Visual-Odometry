@@ -4,91 +4,67 @@
 #include <opencv2/core/core.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/highgui/highgui.hpp>
+#include <eigen3/Eigen/Eigen>
 #include <chrono>
-
 using namespace cv;
 using namespace std;
 
-void getKeyPoints(Mat inputImage, vector<KeyPoint>& keyPoints) {
+void poseEstimation2d2d(vector<KeyPoint> features1, vector<KeyPoint> features2, vector<DMatch> matches, Mat &R, Mat &t) {
+    Mat K = (Mat_<double>(3,3) << 520.9, 0, 325.1, 0, 521, 249.7, 0, 0, 1);
+    vector<Point2f> pt1, pt2;
 
-    keyPoints.clear();
-
-    for(int i = 3; i < inputImage.rows - 3; i++) {
-        for(int j = 3; j < inputImage.cols - 3; j++) {
-            int p = inputImage.at<uchar>(i,j); 
-            int T = p * 0.7;
-            int a[16];
-            a[0] = inputImage.at<uchar>(i ,j - 3);
-            a[1] = inputImage.at<uchar>(i - 1,j - 3);
-            a[2] = inputImage.at<uchar>(i - 2,j - 2);
-            a[3] = inputImage.at<uchar>(i - 3,j - 1);
-            a[4] = inputImage.at<uchar>(i - 3,j);
-            a[5] = inputImage.at<uchar>(i - 3,j + 1);
-            a[6] = inputImage.at<uchar>(i - 2,j + 2);
-            a[7] = inputImage.at<uchar>(i - 1,j + 3);
-            a[8] = inputImage.at<uchar>(i ,j + 3);
-            a[9] = inputImage.at<uchar>(i + 1,j + 3);
-            a[10] = inputImage.at<uchar>(i + 2,j + 2);
-            a[11] = inputImage.at<uchar>(i + 3,j + 1);
-            a[12] = inputImage.at<uchar>(i + 3,j );
-            a[13] = inputImage.at<uchar>(i + 3,j - 1);
-            a[14] = inputImage.at<uchar>(i + 2,j - 2);
-            a[15] = inputImage.at<uchar>(i + 1,j - 3);
-            bool first = true;
-            int firstN = 0;
-            int mx = 0;
-            int cur = 0, cur1 = 0;
-            for( int k = 0; k < 16; k++) {
-                if(a[k] < p - T || a[k] > p + T) {
-                    cur++;
-                } else {
-                    if(first) {
-                        first = false;
-                        firstN = cur;
-                    }
-                    mx = cur>mx?cur:mx;
-                    cur = 0;
-                }
-
-                // if () {
-                //     cur1++;
-                // } else {
-                //     // if(first) {
-                //     //     first = false;
-                //     //     firstN = cur;
-                //     // }
-                //     mx = cur1>mx?cur1:mx;
-                //     cur1 = 0;
-                // }
-            }
-            cur = cur+firstN;
-            mx = cur>mx?cur:mx;
-            if(mx >= 12) {
-                Point2f pt;
-                pt.x = j;
-                pt.y = i;
-                KeyPoint keyPoint(pt, 3);
-                bool flag = false;
-                for(KeyPoint k : keyPoints) {
-                    if(k.pt == keyPoint.pt) {
-                        flag = true;
-                        break;
-                    }
-                }
-                if(!flag) {
-                    keyPoints.push_back(keyPoint);
-                }
-            }
-        }
+    for(int i = 0; i < (int)matches.size(); i++) {
+            pt1.push_back(features1[matches[i].queryIdx].pt);
+            pt2.push_back(features2[matches[i].trainIdx].pt);
     }
+
+    Mat fundmentalMat;
+    fundmentalMat = findFundamentalMat(pt1, pt2, cv::FM_8POINT);
+    cout << fundmentalMat << endl;
+
+    Point2d principalPt(325.1, 249.7);
+    double focal_length = 521;
+    Mat essentialMatrix;
+    
 }
 
 int main(int argc, char **argv) {
 
-    Mat left = imread("testing/images/c.jpeg", IMREAD_GRAYSCALE);
-    Mat right = imread("testing/images/d.jpeg", IMREAD_GRAYSCALE);
-    resize(left, left, Size(left.cols/2, left.rows/2));
-    resize(right, right, Size(right.cols/2, right.rows/2));
+    Mat left = imread("testing/images/left.jpeg");
+    Mat right = imread("testing/images/right.jpeg");
+
+    double fx = 718.856, fy = 718.856, cx = 607.1928, cy = 185.2157;
+    double b = 0.573;
+
+    Ptr<StereoSGBM> sgbm = StereoSGBM::create(0, 96, 9, 8*9*9, 32*9*9, 1, 63, 10, 100, 32);
+    Mat disparity_sgbm, disparity;
+    sgbm -> compute(left, right, disparity_sgbm);
+    disparity_sgbm.convertTo(disparity, CV_32F, 1.0 / 16.0f);
+    
+    // pcl::PointCloud<PointXYZRGB> pc;
+    // for(int i = 0; i < left.rows; i++) {
+    //     for(int j = 0; j < left.cols; j++) {
+    //         if(disparity.at<float>(i, j) <= 10.0 || disparity.at<float>(i, j) >= 96.0) {
+    //             continue;
+    //         }
+    //         PointXYZRGB pt;
+    //         pt.rgb = left.at<uchar>(i, j) / 255.0;
+    //         // Eigen::Vector4d pt(0, 0, 0, left.at<uchar>(i, j) / 255.0);
+    //         double x = (i - cx) / fx;
+    //         double y = (j - cy) / fy;
+    //         double depth = fx * b / (disparity.at<float>(i, j));
+    //         pt.x = x * depth;
+    //         pt.y = y *depth;
+    //         pt.z = depth;
+    //         pc.push_back(pt);
+    //     }
+    // }
+
+    imshow("Disparity", disparity / 96.0);
+    waitKey(0);
+
+    // resize(left, left, Size(left.cols/2, left.rows/2));
+    // resize(right, right, Size(right.cols/2, right.rows/2));
 
     vector<KeyPoint> keyPointVector1, keyPointVector2;
     Mat descriptors1,descriptors2;
@@ -188,29 +164,10 @@ int main(int argc, char **argv) {
     // imshow("all matches flann", img_matchFlann);
     imshow("good matches flann", img_goodmatchFlann);
     cout << "vsbf" << endl;
-    // t1 = chrono::steady_clock::now();
-    // FAST(left, keyPointVector1, 50);
-    
-    // t2 = chrono::steady_clock::now();
-    // time_used = chrono::duration_cast<chrono::duration<double> > (t2 - t1);
-    // cout << "extract FAST cost = " << time_used.count() << " seconds. " << endl;
-    // Mat outimg2;
-    // drawKeypoints(left, keyPointVector1, outimg2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-    // imshow("FAST features", outimg2);
 
-    // t1 = chrono::steady_clock::now();
-    // getKeyPoints(left, keyPointVector1);
-    // t2 = chrono::steady_clock::now();
 
-    // time_used = chrono::duration_cast<chrono::duration<double> > (t2 - t1);
-    // cout << "extract Custom cost = " << time_used.count() << " seconds. " << endl;
-    // Mat outimg3;
-    // drawKeypoints(left, keyPointVector1, outimg3, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-    // cout << keyPointVector1.size() << endl;
-    // for(KeyPoint k : keyPointVector1) {
-    //     cout << "(" << k.pt.x << ", " << k.pt.y << ")" << endl;
-    // }
-    // imshow("Custom features", outimg3);
+
+
 
     waitKey(0);
     return 0;

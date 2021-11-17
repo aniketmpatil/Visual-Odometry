@@ -235,25 +235,44 @@ int main(int argc, char **argv){
     Mat descriptors1,descriptors2;
     Ptr<FeatureDetector> detector = ORB::create();
     Ptr<DescriptorExtractor> descriptor = ORB::create();
-    Ptr<DescriptorMatcher> matcherBrute = DescriptorMatcher::create("BruteForce−Hamming");
+    Ptr<DescriptorMatcher> matcherBrute = DescriptorMatcher::create("BruteForce-Hamming");
     // Ptr<DescriptorMatcher> matcherFlann = DescriptorMatcher::create("FlannBased");
     chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
     detector->detect(left, keyPointVector1);
     detector->detect(right, keyPointVector2);
 
-	vector<vector<float>> left_projection_matrix {
+    descriptor->compute(left, keyPointVector1, descriptors1);
+    descriptor->compute(right, keyPointVector2, descriptors2);
+	vector<DMatch> matchesBrute;
+	matcherBrute->match(descriptors1, descriptors2, matchesBrute);
+
+	float left_projection_matrix[3][4] = {
 		{718.856, 0.00, 607.1928, 45.38225},
 		{0.00, 718.856, 185.2157, -0.1130887},
 		{0.00, 0.00, 1.00, 0.003779761}
 	};
 
-	vector<vector<float>> right_projection_matrix {
+	Mat lpm = cv::Mat(3, 4, CV_64FC2, left_projection_matrix);
+
+	float right_projection_matrix[3][4] = {
 		{718.856, 0.00, 607.1928, -337.2877},
 		{0.00, 718.856, 185.2157, 2.369057},
 		{0.00, 0.00, 1.00, 0.004915215}
 	};
 
-	vector<vector<float>> Hom3D;
+	vector<Point2f> keyPointVector1Matched, keyPointVector2Matched;
 
-	cv::triangulatePoints(left_projection_matrix, right_projection_matrix, keyPointVector1, keyPointVector2, Hom3D);
+	for(int i = 0; i < matchesBrute.size(); i++) {
+		keyPointVector1Matched.push_back(keyPointVector1[matchesBrute[i].queryIdx].pt);
+		keyPointVector2Matched.push_back(keyPointVector2[matchesBrute[i].queryIdx].pt);
+	}
+
+	Mat rpm = cv::Mat(3, 4, CV_64FC2, right_projection_matrix);
+
+	vector<Point3d> Hom3D;
+	cv::Mat pnts3D(1,keyPointVector1Matched.size(),CV_64FC4);
+	cv::triangulatePoints(lpm, rpm, keyPointVector1Matched, keyPointVector2Matched, pnts3D);
+	imshow("Image", pnts3D);
+	cout << pnts3D.size() << endl;
+	waitKey(0);
 }
