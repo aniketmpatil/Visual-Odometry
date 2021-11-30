@@ -6,7 +6,7 @@
 
 #include "opencv2/core.hpp"
 #include "opencv2/features2d.hpp"
-#include "opencv2/xfeatures2d.hpp"
+// #include "opencv2/xfeatures2d.hpp"
 #include "opencv2/highgui.hpp"
 #include "opencv2/video/tracking.hpp"
 #include "opencv2/core/core.hpp"
@@ -19,7 +19,7 @@
 
 using namespace std;
 using namespace cv;
-using namespace cv::xfeatures2d;
+// using namespace cv::xfeatures2d;
 using std::ofstream;
 
 Mat find3Dpoints(Mat ,Mat );
@@ -101,56 +101,56 @@ int main()
 
 		if (k<10)
 		{
-			filename1 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/00000" + to_string(k) + ".png";
-      filename2 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/00000" + to_string(k) + ".png";		 	
+			filename1 = "dataset/sequences/00/image_0/00000" + to_string(k) + ".png";
+      filename2 = "dataset/sequences/00/image_1/00000" + to_string(k) + ".png";		 	
 		}
 
 		if (k>=10&&k<100)
 		{
-			filename1 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/0000" + to_string(k) + ".png";
-      filename2 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/0000" + to_string(k) + ".png";     
+			filename1 = "dataset/sequences/00/image_0/0000" + to_string(k) + ".png";
+      filename2 = "dataset/sequences/00/image_1/0000" + to_string(k) + ".png";     
     
 		}
 
 		if(k>=100&&k<1000)
 		{
-			filename1 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/000" + to_string(k) + ".png";
-      filename2 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/000" + to_string(k) + ".png";     
+			filename1 = "dataset/sequences/00/image_0/000" + to_string(k) + ".png";
+      filename2 = "dataset/sequences/00/image_1/000" + to_string(k) + ".png";     
     
 		}
 
     if(k>=1000&&k<2000)
     {
-      filename1 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/00" + to_string(k) + ".png";
-      filename2 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/00" + to_string(k) + ".png";     
+      filename1 = "dataset/sequences/00/image_0/00" + to_string(k) + ".png";
+      filename2 = "dataset/sequences/00/image_1/00" + to_string(k) + ".png";     
     
     }
 
 		if ((m+1)<10)
 		{
-			filename3 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/00000" + to_string(m+1) + ".png";
-      filename4 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/00000" + to_string(m+1) + ".png";     
+			filename3 = "dataset/sequences/00/image_0/00000" + to_string(m+1) + ".png";
+      filename4 = "dataset/sequences/00/image_1/00000" + to_string(m+1) + ".png";     
     
 		}
 
 		if ((m+1)>=10&&(m+1)<100)
 		{
-			filename3 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/0000" + to_string(m+1) + ".png";
-      filename4 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/0000" + to_string(m+1) + ".png";     
+			filename3 = "dataset/sequences/00/image_0/0000" + to_string(m+1) + ".png";
+      filename4 = "dataset/sequences/00/image_1/0000" + to_string(m+1) + ".png";     
     
 		}
 
 		if((m+1)>=100&&(m+1)<1000)
 		{
-			filename3 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/000" + to_string(m+1) + ".png";
-      filename4 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/000" + to_string(m+1) + ".png";     
+			filename3 = "dataset/sequences/00/image_0/000" + to_string(m+1) + ".png";
+      filename4 = "dataset/sequences/00/image_1/000" + to_string(m+1) + ".png";     
     
 		}
 
     if((m+1)>=1000&&(m+1)<2000)
     {
-      filename3 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI LEFT 2/00" + to_string(m+1) + ".png";
-      filename4 = "/home/amey/Desktop/WPI/Computer Vision/Project/KITTI dataset big/KITTI RIGHT 2/00" + to_string(m+1) + ".png";     
+      filename3 = "dataset/sequences/00/image_0/00" + to_string(m+1) + ".png";
+      filename4 = "dataset/sequences/00/image_1/00" + to_string(m+1) + ".png";     
     
     }
 
@@ -330,18 +330,19 @@ int main()
       string text2 = "Green color: groundtruth";
       string coord = "Coordinates x: " + to_string(cpoint.at<double>(0,0)) + " y: " + to_string(cpoint.at<double>(0,1)) + " z: " + to_string(cpoint.at<double>(0,2));
 
-
+      
       tinv.copyTo(tinvprev);
-
+      
   		x_err=abs(cpoint.at<double>(0,0)-gt_poseplot[m-1].x);
       z_err=abs((cpoint.at<double>(0,2))*(-1)-(gt_poseplot[m-1].z)*(-1));
+      cout << "Test" << endl;
       x_error.push_back(x_err);
       z_error.push_back(z_err);
       cout<<"X_error: "<<x_err<<endl;
       cout<<"Z_error: "<<z_err<<endl;
       tot_error=sqrt(x_err*x_err+z_err*z_err);
       t_error.push_back(tot_error);
-
+      cout << "Test" << endl;
 
       Point2f center = Point2f(int(cpoint.at<double>(0,0)) + 500, int(cpoint.at<double>(0,2))*(-1) + 400);
       cout<<"centre is: "<<cpoint.at<double>(0,0)<<" "<<cpoint.at<double>(0,2)<<endl;
@@ -351,7 +352,7 @@ int main()
       circle(traj, t_center,1, CV_RGB(0,255,0), 2);
       rectangle(traj, Point2f(380, 10), Point2f(1000, 170),  CV_RGB(0,0,0), cv::FILLED);
       putText(traj, text, Point2f(400,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0, 0,255), 1, 5);
-      cvNamedWindow("Name",CV_WINDOW_NORMAL);
+      namedWindow("Name",WINDOW_NORMAL);
       putText(traj, text2, Point2f(400,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0,255,0), 1, 5);
       putText(traj, coord, Point2f(400,90), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0,0,255), 1, 5);
       //cv::imshow( "Road facing camera", frameL1 );
@@ -690,7 +691,7 @@ vector<Point3f> groundtruth() {
       string line;
 
       int i = 0;
-      ifstream myfile ("/home/amey/Desktop/WPI/Computer Vision/Project/Codes/C++ trial/07.txt");
+      ifstream myfile ("dataset/poses/00.txt");
       double x =0, y=0, z = 0, val = 0;
       double x_prev, y_prev, z_prev;
       if (myfile.is_open())
