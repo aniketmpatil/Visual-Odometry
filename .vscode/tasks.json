@@ -4,11 +4,19 @@
 		{
 			"type": "cppbuild",
 			"label": "C/C++: g++ build active file",
-			"dependsOn": "_makebuildfolder",
 			"command": "/usr/bin/g++",
 			"args": [
+				"-fdiagnostics-color=always",
 				"-g",
 				"${file}",
+				"-I",
+				"/usr/include/eigen3",
+				// "-I",
+				// "/usr/include/vtk-7.1",
+				// "-I",
+				// "/usr/include/pcl-1.10",
+				// "-I",
+				// "/usr/include/pcl-1.10/pcl/common",
 				"-o",
 				"${fileDirname}/build/${fileBasenameNoExtension}",
 				"`pkg-config",
@@ -25,12 +33,12 @@
 			"group": "build",
 			"detail": "compiler: /usr/bin/g++"
 		},
-        {
-          "label": "_makebuildfolder",
-          "type": "shell",
-          "command": "mkdir -p ${fileDirname}/build",
-          "problemMatcher": [],
-          "group": "none"
-        }
+		{
+		"label": "_makebuildfolder",
+		"type": "shell",
+		"command": "mkdir -p ${fileDirname}/build",
+		"problemMatcher": [],
+		"group": "none"
+		}
 	]
 }
