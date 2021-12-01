@@ -52,7 +52,7 @@ void generateDisparity(Mat left, Mat right) {
     waitKey(0);
 }
 
-void getMatchesFlan(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatchFlann) {
+void getMatchesFlan(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatchFlann, vector<KeyPoint> k1, vector<KeyPoint> k2, Mat left, Mat right) {
 
     vector<DMatch> matchesFlann;
     FlannBasedMatcher matcherFlann = FlannBasedMatcher(makePtr<flann::LshIndexParams>(12, 20, 2));
@@ -66,6 +66,15 @@ void getMatchesFlan(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatc
             goodMatchFlann.push_back(matchesFlann[i]);
         }
     }
+    Mat img_matchFlann1;
+    drawMatches(left, k1, right, k2, matchesFlann, img_matchFlann1);
+    imshow("all matches flann", img_matchFlann1);
+    cout << "vsbf" << endl;
+    Mat img_goodmatchFlann1;
+    drawMatches(left, k1, right, k2, goodMatchFlann, img_goodmatchFlann1);
+    imshow("good matches flann", img_goodmatchFlann1);
+    cout << "vsbf" << endl;
+    waitKey(0);
     // vector<DMatch> matchesKnnFlann;
     // matcherFlann.knnMatch(descriptors1, descriptors2, matchesKnnFlann, 1);
 }
@@ -135,7 +144,7 @@ int main(int argc, char **argv) {
 
     vector<DMatch> goodMatchBrute, goodMatchFlann;
     // getMatchesBrute(descriptors1, descriptors2, goodMatchBrute);
-    getMatchesFlan(descriptors1, descriptors2, goodMatchFlann);
+    getMatchesFlan(descriptors1, descriptors2, goodMatchFlann, keyPointVector1, keyPointVector2, left, right);
     cout << "Good Matches: " << goodMatchFlann.size() << endl;
 
     Mat img_goodmatchBrute, img_goodmatchFlann;
@@ -183,7 +192,7 @@ int main(int argc, char **argv) {
     detector->detect(left1, keyPointVector3);
     descriptor->compute(left1, keyPointVector3, descriptors3);
     vector<DMatch> goodMatchFlann1;
-    getMatchesFlan(descriptors1, descriptors3, goodMatchFlann1);
+    getMatchesFlan(descriptors1, descriptors3, goodMatchFlann1, keyPointVector1, keyPointVector3, left, right);
     // cout << "Left 0-1 Matches: " << goodMatchFlann1.size() << endl;
 
     Mat R, t;
