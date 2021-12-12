@@ -12,6 +12,8 @@ using namespace std;
 using namespace cv;
 using namespace Eigen;
 
+void plot();
+void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq);
 void getMatchesFlan(Mat prev_left_descriptors, Mat prev_right_descriptors, vector<DMatch> &stereo_matches);
 void getMatchesBrute(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatchBrute);
 Mat convertToHomogeneousMat(Mat R, Mat T);
@@ -22,6 +24,7 @@ vector<Point3f> import_GT(string seq);
 Mat lpm = cv::Mat(3, 4, CV_32F);
 Mat rpm = cv::Mat(3, 4, CV_32F);
 Mat camera_matrix, rot_matrix, trans_vect, distortion_mat;
+vector<double> x_error, z_error, total_error, mean_error_arr, img_num_arr;
 
 Mat trajectory = Mat(1000, 1000, CV_8UC3);
 
@@ -309,13 +312,55 @@ int main(int argc, char** argv) {
         // cout << T_trans.type() << endl;
         Point2f estimated_point = Point2f((int)(T_trans.at<double>(0,0)) + 500, (int)(T_trans.at<double>(0,2)) * (-1) + 400);
         Point2f ground_truth_point = Point2f((int)(ground_truth_poses[image_seq].x) + 500, (int)(ground_truth_poses[image_seq].z) * (-1) + 400);
-        circle(trajectory, estimated_point, 1, CV_RGB(255, 0, 0), FILLED);
-        circle(trajectory, ground_truth_point, 1, CV_RGB(0, 255, 0), FILLED);
-        imshow("Trajectory", trajectory);
+        // circle(trajectory, estimated_point, 1, CV_RGB(255, 0, 0), FILLED);
+        // circle(trajectory, ground_truth_point, 1, CV_RGB(0, 255, 0), FILLED);
+        // imshow("Trajectory", trajectory);
+        img_num_arr.push_back(image_seq);
+        calculate_ATE(estimated_point, ground_truth_point, image_seq);
+
         waitKey(1);
     }
+    plot();
     cout << "************** The End **************" << endl;
 }
+
+void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq){
+    double x_err = abs(estimate_pt.x - gt_point.x);
+    double z_err = abs(estimate_pt.y - gt_point.y);
+    double tot_error = sqrt(pow(x_err, 2) + pow(z_err, 2));
+
+    x_error.push_back(x_err);
+    z_error.push_back(z_err);
+    total_error.push_back(tot_error);
+
+    float mean_error = 0;
+    for(auto& itr : total_error)
+        mean_error += itr;
+    mean_error /= total_error.size();
+    mean_error_arr.push_back(mean_error);
+    cout << "Absolute Error (sqrt(x**2 + z**2)): " << tot_error << endl;
+
+    string text = "Absolute Error: " + to_string(tot_error);
+    rectangle(trajectory, Point2f(580, 100) , Point2f(1000, 130), CV_RGB(0, 0, 0), cv::FILLED);
+    circle(trajectory, estimate_pt, 1, CV_RGB(255, 0, 0), FILLED);
+    circle(trajectory, gt_point, 1, CV_RGB(0, 255, 0), FILLED);
+    putText(trajectory, text, Point2f(600,110), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, Scalar(255,255,0), 1, 5);
+    putText(trajectory, "Red: Estimated Trajectory", Point2f(600,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0,0,255), 1, 5);
+    putText(trajectory, "Green: Ground Truth", Point2f(600,80), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0,255,0), 1, 5);
+    imshow("Trajectory", trajectory);
+}
+
+void plot(){
+
+    // std::ifstream file;
+    ofstream file("testing/output.dat");
+    file << "# X" << " " << "Y" << " \n";
+    for(int i = 0; i < total_error.size(); i++){
+        file << "  " << img_num_arr.at(i) << " " << total_error.at(i) << " \n";
+    }
+    file.close();
+}
+
 
 void getMatchesFlan(Mat prev_left_descriptors, Mat prev_right_descriptors, vector<DMatch> &stereo_matches) {
 
