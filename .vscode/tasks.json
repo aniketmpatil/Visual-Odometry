@@ -4,6 +4,7 @@
 		{
 			"type": "cppbuild",
 			"label": "C/C++: g++ build active file",
+			"dependsOn": "_makebuildfolder",
 			"command": "/usr/bin/g++",
 			"args": [
 				"-fdiagnostics-color=always",
