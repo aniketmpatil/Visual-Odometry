@@ -24,7 +24,9 @@ vector<Point3f> import_GT(string seq);
 Mat lpm = cv::Mat(3, 4, CV_32F);
 Mat rpm = cv::Mat(3, 4, CV_32F);
 Mat camera_matrix, rot_matrix, trans_vect, distortion_mat;
-vector<double> x_error, z_error, total_error, mean_error_arr, img_num_arr;
+vector<double> x_error, z_error, total_error, mean_error_arr, img_num_arr, dist_arr, mean2_arr;
+Point2f prev_point;
+double dist_trav = 0.0;
 
 Mat trajectory = Mat(1000, 1000, CV_8UC3);
 
@@ -338,16 +340,29 @@ void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq){
         mean_error += itr;
     mean_error /= total_error.size();
     mean_error_arr.push_back(mean_error);
-    cout << "Absolute Error (sqrt(x**2 + z**2)): " << tot_error << endl;
+    cout << "Absolute Error: " << tot_error << endl;
 
+    if(img_seq == 1){
+        prev_point.x = gt_point.x;
+        prev_point.y = gt_point.y;
+    }
+    double dist_bw_frames = norm(Mat(gt_point), Mat(prev_point));
+    prev_point.x = gt_point.x;
+    prev_point.y = gt_point.y;
+    // dist_arr.push_back(dist_bw_frames);
+    dist_trav += dist_bw_frames;
+    double mean2 = tot_error / dist_trav;
+    cout << "Mean Error: " << mean2 << endl;
+    mean2_arr.push_back(mean2);
     string text = "Absolute Error: " + to_string(tot_error);
     rectangle(trajectory, Point2f(580, 100) , Point2f(1000, 130), CV_RGB(0, 0, 0), cv::FILLED);
     circle(trajectory, estimate_pt, 1, CV_RGB(255, 0, 0), FILLED);
     circle(trajectory, gt_point, 1, CV_RGB(0, 255, 0), FILLED);
     putText(trajectory, text, Point2f(600,110), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, Scalar(255,255,0), 1, 5);
-    putText(trajectory, "Red: Estimated Trajectory", Point2f(600,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0,0,255), 1, 5);
-    putText(trajectory, "Green: Ground Truth", Point2f(600,80), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, Scalar(0,255,0), 1, 5);
+    putText(trajectory, "Red: Estimated Trajectory", Point2f(600,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(255, 0, 0), 1, 5);
+    putText(trajectory, "Green: Ground Truth", Point2f(600,80), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(0, 255, 0), 1, 5);
     imshow("Trajectory", trajectory);
+    cout << "----------------------" << endl;
 }
 
 void plot(){
@@ -359,6 +374,12 @@ void plot(){
         file << "  " << img_num_arr.at(i) << " " << total_error.at(i) << " \n";
     }
     file.close();
+    ofstream file2("testing/mean_err.dat");
+    file2 << "# X" << " " << "Y" << " \n";
+    for(int i = 0; i < total_error.size(); i++){
+        file2 << "  " << img_num_arr.at(i) << " " << mean2_arr.at(i) << " \n";
+    }
+    file2.close();
 }
 
 
