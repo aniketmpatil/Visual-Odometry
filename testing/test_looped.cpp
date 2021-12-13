@@ -13,7 +13,7 @@ using namespace cv;
 using namespace Eigen;
 
 void plot();
-void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq);
+void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_3d_points);
 void getMatchesFlan(Mat prev_left_descriptors, Mat prev_right_descriptors, vector<DMatch> &stereo_matches);
 void getMatchesBrute(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatchBrute);
 Mat convertToHomogeneousMat(Mat R, Mat T);
@@ -318,7 +318,7 @@ int main(int argc, char** argv) {
         // circle(trajectory, ground_truth_point, 1, CV_RGB(0, 255, 0), FILLED);
         // imshow("Trajectory", trajectory);
         img_num_arr.push_back(image_seq);
-        calculate_ATE(estimated_point, ground_truth_point, image_seq);
+        calculate_ATE(estimated_point, ground_truth_point, image_seq, prev_3d_points);
 
         waitKey(1);
     }
@@ -326,7 +326,7 @@ int main(int argc, char** argv) {
     cout << "************** The End **************" << endl;
 }
 
-void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq){
+void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_3d_points){
     double x_err = abs(estimate_pt.x - gt_point.x);
     double z_err = abs(estimate_pt.y - gt_point.y);
     double tot_error = sqrt(pow(x_err, 2) + pow(z_err, 2));
@@ -361,7 +361,17 @@ void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq){
     putText(trajectory, text, Point2f(600,110), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, Scalar(255,255,0), 1, 5);
     putText(trajectory, "Red: Estimated Trajectory", Point2f(600,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(255, 0, 0), 1, 5);
     putText(trajectory, "Green: Ground Truth", Point2f(600,80), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(0, 255, 0), 1, 5);
-    imshow("Trajectory", trajectory);
+    Mat trajTemp = trajectory.clone();
+        for(int i = 0; i < prev_3d_points.cols; i++) {
+            // cout << (int)(prev_3d_points.at<float>(2,i)) << endl;
+            if((abs((int)(prev_3d_points.at<float>(2,i))) * (-1) < 15) && ((int)(prev_3d_points.at<float>(2,i))) * (-1) < 0) {
+                Point2f point_3d = Point2f((int)(prev_3d_points.at<float>(0,i)) + 500, (int)(prev_3d_points.at<float>(2,i)) * (-1) + 400);
+                circle(trajTemp, point_3d, 1, CV_RGB(255, 255, 255), FILLED);
+            }
+        
+        }
+
+    imshow("Trajectory", trajTemp);
     cout << "----------------------" << endl;
 }
 

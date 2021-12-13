@@ -56,7 +56,11 @@ void getMatchesFlan(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatc
 
     vector<DMatch> matchesFlann;
     FlannBasedMatcher matcherFlann = FlannBasedMatcher(makePtr<flann::LshIndexParams>(12, 20, 2));
+    auto t1 = chrono::steady_clock::now();
     matcherFlann.match(descriptors1, descriptors2, matchesFlann);
+    auto t2 = chrono::steady_clock::now();
+    auto time_used = chrono::duration_cast<chrono::duration<double> > (t2 - t1);
+    cout << "Match Flann cost = " << time_used.count() << " seconds. " << endl;
     auto min_maxFlann = minmax_element(matchesFlann.begin(), matchesFlann.end(), [](const DMatch &m1, const DMatch &m2) { return m1.distance < m2.distance; });
     double min_dist_flann = min_maxFlann.first->distance;
     double max_dist_flann = min_maxFlann.second->distance;
@@ -83,7 +87,11 @@ void getMatchesBrute(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMat
 
     vector<DMatch> matchesBrute;
     Ptr<DescriptorMatcher> matcherBrute = DescriptorMatcher::create("BruteForce-Hamming");    
+    auto t1 = chrono::steady_clock::now();
     matcherBrute->match(descriptors1, descriptors2, matchesBrute);
+    auto t2 = chrono::steady_clock::now();
+    auto time_used = chrono::duration_cast<chrono::duration<double> > (t2 - t1);
+    cout << "Match Brute cost = " << time_used.count() << " seconds. " << endl;
     auto min_maxBrute = minmax_element(matchesBrute.begin(), matchesBrute.end(), [](const DMatch &m1, const DMatch &m2) { return m1.distance < m2.distance; });
     double min_dist_brute = min_maxBrute.first->distance;
     double max_dist_brute = min_maxBrute.second->distance;
@@ -100,7 +108,8 @@ int main(int argc, char **argv) {
 
     Mat left = imread(argv[1], IMREAD_GRAYSCALE);
     Mat right = imread(argv[2], IMREAD_GRAYSCALE);
-
+    resize(left, left, Size(left.cols/3, left.rows/3));
+    resize(right, right, Size(right.cols/3, right.rows/3));
     // double fx = 718.856, fy = 718.856, cx = 607.1928, cy = 185.2157;
     // double b = 0.573; 
     //
@@ -134,25 +143,30 @@ int main(int argc, char **argv) {
     descriptor->compute(left, keyPointVector1, descriptors1);
     descriptor->compute(right, keyPointVector2, descriptors2);
 
-    // Mat outimg1;
-    // drawKeypoints(left, keyPointVector1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-    // imshow("ORB features 1", outimg1);
+    Mat outimg1;
+    drawKeypoints(left, keyPointVector1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+    imshow("ORB features 1", outimg1);
+    imwrite("testing/images/keyPoints1.png",outimg1);
     //
-    // Mat outimg2;
-    // drawKeypoints(right, keyPointVector2, outimg2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-    // imshow("ORB features 2", outimg2);
+    Mat outimg2;
+    drawKeypoints(right, keyPointVector2, outimg2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+    imshow("ORB features 2", outimg2);
+    imwrite("testing/images/keyPoints2.png",outimg2);
 
     vector<DMatch> goodMatchBrute, goodMatchFlann;
-    // getMatchesBrute(descriptors1, descriptors2, goodMatchBrute);
+    getMatchesBrute(descriptors1, descriptors2, goodMatchBrute);
     getMatchesFlan(descriptors1, descriptors2, goodMatchFlann, keyPointVector1, keyPointVector2, left, right);
+    waitKey(0);
     cout << "Good Matches: " << goodMatchFlann.size() << endl;
 
     Mat img_goodmatchBrute, img_goodmatchFlann;
     // drawMatches(left, keyPointVector1, right, keyPointVector2, goodMatchBrute, img_goodmatchBrute);
     // imshow("good matches brute", img_goodmatchBrute);
     //
-    // drawMatches(left, keyPointVector1, right, keyPointVector2, goodMatchFlann, img_goodmatchFlann);
-    // imshow("good matches flann", img_goodmatchFlann);
+    drawMatches(left, keyPointVector1, right, keyPointVector2, goodMatchFlann, img_goodmatchFlann);
+    imshow("good matches flann", img_goodmatchFlann);
+    imwrite("testing/images/matches.png",img_goodmatchFlann);
+
     // cout << "vsbf" << endl;
     //
     // float left_projection_matrix[3][4] = {
