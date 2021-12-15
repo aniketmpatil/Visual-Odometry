@@ -13,7 +13,7 @@ using namespace cv;
 using namespace Eigen;
 
 void plot();
-void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_3d_points);
+void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_3d_points, VideoWriter video);
 void getMatchesFlan(Mat prev_left_descriptors, Mat prev_right_descriptors, vector<DMatch> &stereo_matches);
 void getMatchesBrute(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatchBrute);
 Mat convertToHomogeneousMat(Mat R, Mat T);
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     string right_images_path = path+"/image_1/*.png";
     ground_truth_poses = import_GT(seq);
     getProjectionMatrices(path);
-    waitKey(0);
+    // waitKey(0);
     vector<string> left_images_names;
     vector<string> right_images_names;
     glob(left_images_path, left_images_names);
@@ -60,273 +60,297 @@ int main(int argc, char** argv) {
     Ptr<FeatureDetector> detector = ORB::create(1000);
     Ptr<DescriptorExtractor> descriptor = ORB::create(1000);
 
-    for(int image_seq = 1; image_seq < left_images_names.size(); image_seq++) {
-        // cout << "Image : " << image_seq << endl;
-        Mat prev_left_image = imread(left_images_names[image_seq-1], IMREAD_GRAYSCALE);
-        Mat prev_right_image = imread(right_images_names[image_seq-1], IMREAD_GRAYSCALE);
-        Mat cur_left_image = imread(left_images_names[image_seq], IMREAD_GRAYSCALE);
-        
-        
+    Mat left_image = imread(left_images_names[0], IMREAD_GRAYSCALE);
+    Mat right_image = imread(right_images_names[0], IMREAD_GRAYSCALE);
 
-        detector->detect(prev_left_image, prev_left_keypoints);
-        detector->detect(prev_right_image, prev_right_keypoints);
-        detector->detect(cur_left_image, cur_left_keypoints);
-        detector->detectAndCompute(prev_left_image, Mat(), prev_left_keypoints, prev_left_descriptors, true);
-        detector->detectAndCompute(prev_right_image, Mat(), prev_right_keypoints, prev_right_descriptors, true);
-        detector->detectAndCompute(cur_left_image, Mat(), cur_left_keypoints, cur_left_descriptors, true);
-        // descriptor->compute(cur_left_image, cur_left_keypoints, cur_left_descriptors);
-        
+    VideoWriter trajectoryVideo("testing/trajectoryVideo.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, Size(1000,1000));
+    VideoWriter leftVideo("testing/leftVideo.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, left_image.size());
+    VideoWriter rightyVideo("testing/rightVideo.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, right_image.size());
 
-        vector<DMatch> stereo_matches;
-        getMatchesFlan(prev_left_descriptors, prev_right_descriptors, stereo_matches);
-        // cout << "Matches : " << stereo_matches.size() << endl;
-        vector<DMatch> temporal_matches;
-        getMatchesFlan(prev_left_descriptors, cur_left_descriptors, temporal_matches);
-
-        vector<Point2f> stereoPointL, stereoPointR, stereoPointL1;
-        vector<KeyPoint> matched_l_keypoints, matched_r_keypoints;
-        for(int i = 0; i < stereo_matches.size(); i++) {
-            stereoPointL.push_back(prev_left_keypoints[stereo_matches[i].queryIdx].pt);
-            stereoPointR.push_back(prev_right_keypoints[stereo_matches[i].trainIdx].pt);
-            matched_l_keypoints.push_back(prev_left_keypoints[stereo_matches[i].queryIdx]);
-            matched_r_keypoints.push_back(prev_right_keypoints[stereo_matches[i].trainIdx]);
-        }
-        // cout << stereoPointL.size() << ", " << stereoPointR.size() << endl;
-        prev_3d_points.convertTo(prev_3d_points, CV_32F);
-        triangulatePoints(lpm, rpm, stereoPointL, stereoPointR, prev_3d_points);
-        
-        // cout << prev_3d_points.size() << endl;
-        // cout << prev_3d_points.type() << endl;
-        // cout << "Old : " << prev_3d_points.col(0).t() << endl;
-        for(int i = 0; i < prev_3d_points.cols; i++) {
+    try {
+        for(int image_seq = 1; image_seq < left_images_names.size(); image_seq++) {
+            // cout << "Image : " << image_seq << endl;
+            Mat prev_left_image = imread(left_images_names[image_seq-1], IMREAD_GRAYSCALE);
+            Mat prev_right_image = imread(right_images_names[image_seq-1], IMREAD_GRAYSCALE);
+            Mat cur_left_image = imread(left_images_names[image_seq], IMREAD_GRAYSCALE);
             
-            prev_3d_points.at<float>(0,i) = prev_3d_points.at<float>(0,i) / prev_3d_points.at<float>(3,i);
-            prev_3d_points.at<float>(1,i) = prev_3d_points.at<float>(1,i) / prev_3d_points.at<float>(3,i);
-            prev_3d_points.at<float>(2,i) = prev_3d_points.at<float>(2,i) / prev_3d_points.at<float>(3,i);
-            // cout << "New : " << prev_3d_points.col(i).t() << endl;
-            // cout << "A: " << prev_3d_points.col(i) << endl;
-            // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> eigen_3d_point;
-            // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> Heig;
-            // cv2eigen(prev_3d_points.col(i), eigen_3d_point);
-            // cv2eigen(prev_H, Heig);
+            
+
+            detector->detect(prev_left_image, prev_left_keypoints);
+            detector->detect(prev_right_image, prev_right_keypoints);
+            detector->detect(cur_left_image, cur_left_keypoints);
+            detector->detectAndCompute(prev_left_image, Mat(), prev_left_keypoints, prev_left_descriptors, true);
+            detector->detectAndCompute(prev_right_image, Mat(), prev_right_keypoints, prev_right_descriptors, true);
+            detector->detectAndCompute(cur_left_image, Mat(), cur_left_keypoints, cur_left_descriptors, true);
+            // descriptor->compute(cur_left_image, cur_left_keypoints, cur_left_descriptors);
+            
+
+            vector<DMatch> stereo_matches;
+            getMatchesFlan(prev_left_descriptors, prev_right_descriptors, stereo_matches);
+            // getMatchesBrute(prev_left_descriptors, prev_right_descriptors, stereo_matches);
+            // cout << "Matches : " << stereo_matches.size() << endl;
+            // vector<DMatch> temporal_matches;
+            // getMatchesFlan(prev_left_descriptors, cur_left_descriptors, temporal_matches);
+
+            vector<Point2f> stereoPointL, stereoPointR, stereoPointL1;
+            vector<KeyPoint> matched_l_keypoints, matched_r_keypoints;
+            for(int i = 0; i < stereo_matches.size(); i++) {
+                stereoPointL.push_back(prev_left_keypoints[stereo_matches[i].queryIdx].pt);
+                stereoPointR.push_back(prev_right_keypoints[stereo_matches[i].trainIdx].pt);
+                matched_l_keypoints.push_back(prev_left_keypoints[stereo_matches[i].queryIdx]);
+                matched_r_keypoints.push_back(prev_right_keypoints[stereo_matches[i].trainIdx]);
+            }
+            // cout << stereoPointL.size() << ", " << stereoPointR.size() << endl;
+            prev_3d_points.convertTo(prev_3d_points, CV_32F);
+            triangulatePoints(lpm, rpm, stereoPointL, stereoPointR, prev_3d_points);
+            
+            // cout << prev_3d_points.size() << endl;
+            // cout << prev_3d_points.type() << endl;
+            // cout << "Old : " << prev_3d_points.col(0).t() << endl;
+            for(int i = 0; i < prev_3d_points.cols; i++) {
+                
+                prev_3d_points.at<float>(0,i) = prev_3d_points.at<float>(0,i) / prev_3d_points.at<float>(3,i);
+                prev_3d_points.at<float>(1,i) = prev_3d_points.at<float>(1,i) / prev_3d_points.at<float>(3,i);
+                prev_3d_points.at<float>(2,i) = prev_3d_points.at<float>(2,i) / prev_3d_points.at<float>(3,i);
+                // cout << "New : " << prev_3d_points.col(i).t() << endl;
+                // cout << "A: " << prev_3d_points.col(i) << endl;
+                // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> eigen_3d_point;
+                // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> Heig;
+                // cv2eigen(prev_3d_points.col(i), eigen_3d_point);
+                // cv2eigen(prev_H, Heig);
+                // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> transformed_pt;
+                // transformed_pt = Heig*eigen_3d_point;
+                // eigen2cv(transformed_pt, prev_3d_points.col(i));
+                // prev_3d_points.col(i) = prev_H*prev_3d_points.col(i);
+                // cout << "H: " << prev_H << endl;
+                // cout << "B: " << prev_3d_points.col(i) << endl;   
+            }
+
+            Mat prev_3d_Pts_copy;
+            prev_3d_points.copyTo(prev_3d_Pts_copy);
+
+            for(int i=0;i<prev_3d_points.cols;i++)
+            {
+                prev_3d_points.at<float>(0,i)=prev_H.at<float>(0, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(0, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(0, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(0, 3);
+                prev_3d_points.at<float>(1,i)=prev_H.at<float>(1, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(1, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(1, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(1, 3);
+                prev_3d_points.at<float>(2,i)=prev_H.at<float>(2, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(2, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(2, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(2, 3);
+
+            }
+            // cout << "H : " << prev_H << endl;
+            // cout << "New 2 : " << prev_3d_points.col(0).t() << endl;
+
+
+            // cout << lpm << endl << rpm << endl;
+            // cout << prev_3d_points.col(0) << endl;
+            
+            // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> eigen_3d_points;
+            // cv2eigen(prev_3d_points, eigen_3d_points);
             // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> transformed_pt;
-            // transformed_pt = Heig*eigen_3d_point;
-            // eigen2cv(transformed_pt, prev_3d_points.col(i));
-            // prev_3d_points.col(i) = prev_H*prev_3d_points.col(i);
-            // cout << "H: " << prev_H << endl;
-            // cout << "B: " << prev_3d_points.col(i) << endl;   
-        }
+            // transformed_pt = prev_H*eigen_3d_points;
+            // eigen2cv(transformed_pt, prev_3d_points);
+            // cout << prev_H << endl;
+            // cout << "H: " << endl << prev_H << endl;
+            // cout << "3D_pre: " << endl << eigen_3d_points.col(0) << endl;
+            // cout << "3D_post: " << endl << transformed_pt.col(0) << endl;
 
-        Mat prev_3d_Pts_copy;
-        prev_3d_points.copyTo(prev_3d_Pts_copy);
+            vector<Point2f> matched_keypoint;
+            Mat matched_3d_point;
+            vector<KeyPoint> tempVec, tempVec2, tempVec3;
+            
+            Mat status1, err1;
+            // cout << "Stereo Point L: " << stereoPointL.size() << endl;
+            bool flag = true;
+            //********** Optical Flow Start ****************
+            calcOpticalFlowPyrLK(prev_left_image, cur_left_image, stereoPointL, stereoPointL1, status1, err1);
+            // cout << "Stereo Point L1: " << stereoPointL1.size() << endl;
+            // cout << "StatSize: " << status1.size() << endl;
+            status1.convertTo(status1,CV_32F);
 
-        for(int i=0;i<prev_3d_points.cols;i++)
-        {
-            prev_3d_points.at<float>(0,i)=prev_H.at<float>(0, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(0, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(0, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(0, 3);
-            prev_3d_points.at<float>(1,i)=prev_H.at<float>(1, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(1, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(1, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(1, 3);
-            prev_3d_points.at<float>(2,i)=prev_H.at<float>(2, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(2, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(2, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(2, 3);
-
-        }
-        // cout << "H : " << prev_H << endl;
-        // cout << "New 2 : " << prev_3d_points.col(0).t() << endl;
-
-
-        // cout << lpm << endl << rpm << endl;
-        // cout << prev_3d_points.col(0) << endl;
-        
-        // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> eigen_3d_points;
-        // cv2eigen(prev_3d_points, eigen_3d_points);
-        // Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> transformed_pt;
-        // transformed_pt = prev_H*eigen_3d_points;
-        // eigen2cv(transformed_pt, prev_3d_points);
-        // cout << prev_H << endl;
-        // cout << "H: " << endl << prev_H << endl;
-        // cout << "3D_pre: " << endl << eigen_3d_points.col(0) << endl;
-        // cout << "3D_post: " << endl << transformed_pt.col(0) << endl;
-
-        vector<Point2f> matched_keypoint;
-        Mat matched_3d_point;
-        vector<KeyPoint> tempVec, tempVec2, tempVec3;
-        
-        Mat status1, err1;
-        // cout << "Stereo Point L: " << stereoPointL.size() << endl;
-        bool flag = true;
-        //********** Optical Flow Start ****************
-        calcOpticalFlowPyrLK(prev_left_image, cur_left_image, stereoPointL, stereoPointL1, status1, err1);
-        // cout << "Stereo Point L1: " << stereoPointL1.size() << endl;
-        // cout << "StatSize: " << status1.size() << endl;
-        status1.convertTo(status1,CV_32F);
-
-        
-        for(int i = 0; i < status1.rows; i++) {
-            if(status1.at<float>(i,0) != 0) {
-                matched_keypoint.push_back(stereoPointL1[i]);
-                if(flag) {
-                    flag = false;
-                    // cout << prev_3d_points.col(i) << endl;
-                    prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(matched_3d_point);
-                    // cout << matched_3d_point << endl;
-                } else {
-                    Mat temp;
-                    // cout << prev_3d_points.col(i) << endl;
-                    prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(temp);
-                    // cout << temp << endl;
-                    hconcat(matched_3d_point, temp, matched_3d_point);
+            
+            for(int i = 0; i < status1.rows; i++) {
+                if(status1.at<float>(i,0) != 0) {
+                    matched_keypoint.push_back(stereoPointL1[i]);
+                    if(flag) {
+                        flag = false;
+                        // cout << prev_3d_points.col(i) << endl;
+                        prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(matched_3d_point);
+                        // cout << matched_3d_point << endl;
+                    } else {
+                        Mat temp;
+                        // cout << prev_3d_points.col(i) << endl;
+                        prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(temp);
+                        // cout << temp << endl;
+                        hconcat(matched_3d_point, temp, matched_3d_point);
+                    }
                 }
             }
-        }
-        //*********** Optical Flow End *****************
-        // cout << matched_3d_point << endl;
-        // cout << "M3dP:" << matched_3d_point.type() << endl;
-        // cout << "A : " << matched_keypoint.size() << endl;
-        // for(int i = 0; i < stereo_matches.size(); i++) {
-        //     for(int j = 0; j < temporal_matches.size(); j++) {
-        //         if((prev_left_keypoints[stereo_matches[i].queryIdx].pt.x == prev_left_keypoints[temporal_matches[j].queryIdx].pt.x) &&
-        //         (prev_left_keypoints[stereo_matches[i].queryIdx].pt.y == prev_left_keypoints[temporal_matches[j].queryIdx].pt.y)) {
-        //             matched_keypoint.push_back(cur_left_keypoints[temporal_matches[j].trainIdx].pt);
-        //             tempVec.push_back(cur_left_keypoints[temporal_matches[j].trainIdx]);
-        //             tempVec3.push_back(prev_left_keypoints[temporal_matches[j].queryIdx]);
-        //             if(matched_3d_point.cols == 0) {
-        //                 prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(matched_3d_point);
-        //             } else {
-        //                 Mat temp;
-        //                 prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(temp);
-        //                 hconcat(matched_3d_point, temp, matched_3d_point);
-        //             }
-        //         }
-        //     }
-        // }
-        Mat outimgTemp;
-        drawKeypoints(prev_left_image, matched_l_keypoints, outimgTemp, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-        imshow("Test 1", outimgTemp);
-        Mat outimgTemp2;
-        drawKeypoints(prev_right_image, matched_r_keypoints, outimgTemp2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-        imshow("Test 0", outimgTemp2);
-        Mat matched_keypoints_mat = Mat(matched_keypoint);
-        matched_keypoints_mat = matched_keypoints_mat.reshape(1);
-        Mat matched_3d_points_t = matched_3d_point.t();
-        // cout << "matchedKeyPM:" << matched_keypoints_mat.type() << ", " << matched_keypoints_mat.size() << endl;
-        // cout << "matched3DPM:" << matched_3d_points_t.type() << ", " << matched_3d_points_t.size() << endl;
-        
-        
-        Mat points_3d;
-        Mat points_2d;
-        flag = true;
-        for(int i = 0; i < matched_3d_points_t.rows; i++) {
-            // cout << matched_3d_points_t.row(i) << endl;
-            if((abs(matched_3d_points_t.at<float>(i, 0)) < 100000) &&
-            (abs(matched_3d_points_t.at<float>(i, 1)) < 100000) &&
-            (abs(matched_3d_points_t.at<float>(i, 2)) < 100000) &&
-            (matched_3d_points_t.at<float>(i, 2) > 0)) {
-                // tempVec2.push_back(tempVec[i]);
-                if(flag) {
-                    flag=false;
-                    matched_3d_points_t(Range(i, i+1), Range(0, matched_3d_points_t.cols)).copyTo(points_3d);
-                    matched_keypoints_mat(Range(i, i+1), Range(0, matched_keypoints_mat.cols)).copyTo(points_2d);
-                } else {
-                    Mat t1, t2;
-                    matched_3d_points_t(Range(i, i+1), Range(0, matched_3d_points_t.cols)).copyTo(t1);
-                    matched_keypoints_mat(Range(i, i+1), Range(0, matched_keypoints_mat.cols)).copyTo(t2);
-                    vconcat(points_3d, t1, points_3d);
-                    vconcat(points_2d, t2, points_2d);
-
-                }
-            } else {
+            //*********** Optical Flow End *****************
+            // cout << matched_3d_point << endl;
+            // cout << "M3dP:" << matched_3d_point.type() << endl;
+            // cout << "A : " << matched_keypoint.size() << endl;
+            // for(int i = 0; i < stereo_matches.size(); i++) {
+            //     for(int j = 0; j < temporal_matches.size(); j++) {
+            //         if((prev_left_keypoints[stereo_matches[i].queryIdx].pt.x == prev_left_keypoints[temporal_matches[j].queryIdx].pt.x) &&
+            //         (prev_left_keypoints[stereo_matches[i].queryIdx].pt.y == prev_left_keypoints[temporal_matches[j].queryIdx].pt.y)) {
+            //             matched_keypoint.push_back(cur_left_keypoints[temporal_matches[j].trainIdx].pt);
+            //             tempVec.push_back(cur_left_keypoints[temporal_matches[j].trainIdx]);
+            //             tempVec3.push_back(prev_left_keypoints[temporal_matches[j].queryIdx]);
+            //             if(matched_3d_point.cols == 0) {
+            //                 prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(matched_3d_point);
+            //             } else {
+            //                 Mat temp;
+            //                 prev_3d_points(Range(0, prev_3d_points.rows - 1), Range(i, i+1)).copyTo(temp);
+            //                 hconcat(matched_3d_point, temp, matched_3d_point);
+            //             }
+            //         }
+            //     }
+            // }
+            Mat outimgTemp;
+            drawKeypoints(prev_left_image, matched_l_keypoints, outimgTemp, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+            imshow("Left Keypoints", outimgTemp);
+            // leftVideo.write(outimgTemp);
+            Mat outimgTemp2;
+            drawKeypoints(prev_right_image, matched_r_keypoints, outimgTemp2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+            imshow("Right Keypoints", outimgTemp2);
+            // rightyVideo.write(outimgTemp2);
+            Mat matched_keypoints_mat = Mat(matched_keypoint);
+            matched_keypoints_mat = matched_keypoints_mat.reshape(1);
+            Mat matched_3d_points_t = matched_3d_point.t();
+            // cout << "matchedKeyPM:" << matched_keypoints_mat.type() << ", " << matched_keypoints_mat.size() << endl;
+            // cout << "matched3DPM:" << matched_3d_points_t.type() << ", " << matched_3d_points_t.size() << endl;
+            
+            
+            Mat points_3d;
+            Mat points_2d;
+            flag = true;
+            for(int i = 0; i < matched_3d_points_t.rows; i++) {
                 // cout << matched_3d_points_t.row(i) << endl;
+                if((abs(matched_3d_points_t.at<float>(i, 0)) < 100000) &&
+                (abs(matched_3d_points_t.at<float>(i, 1)) < 100000) &&
+                (abs(matched_3d_points_t.at<float>(i, 2)) < 100000) &&
+                (matched_3d_points_t.at<float>(i, 2) > 0)) {
+                    // tempVec2.push_back(tempVec[i]);
+                    if(flag) {
+                        flag=false;
+                        matched_3d_points_t(Range(i, i+1), Range(0, matched_3d_points_t.cols)).copyTo(points_3d);
+                        matched_keypoints_mat(Range(i, i+1), Range(0, matched_keypoints_mat.cols)).copyTo(points_2d);
+                    } else {
+                        Mat t1, t2;
+                        matched_3d_points_t(Range(i, i+1), Range(0, matched_3d_points_t.cols)).copyTo(t1);
+                        matched_keypoints_mat(Range(i, i+1), Range(0, matched_keypoints_mat.cols)).copyTo(t2);
+                        vconcat(points_3d, t1, points_3d);
+                        vconcat(points_2d, t2, points_2d);
+
+                    }
+                } else {
+                    // cout << matched_3d_points_t.row(i) << endl;
+                }
             }
+
+            
+
+            // cout << "point2d: " << points_2d.type() << ", " << points_2d.size() << endl; 
+            // cout << "point3d: " << points_3d.type() << ", " << points_3d.size() << endl; 
+            // cout << "B : " << points_2d.size() << endl;
+            // Mat outimgTemp1;
+            // drawKeypoints(cur_left_image, tempVec2, outimgTemp1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+            // imshow("Test 2", outimgTemp1);
+            Mat Rvec, R, T;
+            // cout << matched_3d_points_t.size() << "\t->\t" << points_3d.size() << "\t|\t" << matched_keypoints_mat.size() << "\t->\t" << points_2d.size() << endl;
+            if(points_2d.rows < 4 && points_2d.cols <= 1) {
+                waitKey(0);
+                continue;
+            }
+            points_2d.convertTo(points_2d, CV_64F);
+            points_3d.convertTo(points_3d, CV_64F);
+            camera_matrix.convertTo(camera_matrix, CV_64F);
+            distortion_mat.convertTo(distortion_mat, CV_64F);
+            // cout << "Type 3pts : " << points_3d.type() << endl;
+            // cout << "Type 2pts : " << points_2d.type() << endl;
+            // cout << camera_matrix.type() << ", " << distortion_mat.type() << endl;
+
+
+            // Mat selected_3D_points,selected_2D_points;
+            // int number_of_points = points_3d.rows;
+            // int points_to_select = 20;
+            // int point_spacing = (int)(floor(number_of_points / points_to_select));
+            // flag = true;
+            // for(int i = 0; i < number_of_points; i += point_spacing) {
+            //     if(flag) {
+            //         points_3d(Range(i, i+1), Range(0, points_3d.cols)).copyTo(selected_3D_points);
+            //         points_2d(Range(i, i+1), Range(0, points_2d.cols)).copyTo(selected_2D_points);
+            //         flag = false;
+            //     } else {
+            //         Mat t1, t2;
+            //         points_3d(Range(i, i+1), Range(0, points_3d.cols)).copyTo(t1);
+            //         points_2d(Range(i, i+1), Range(0, points_2d.cols)).copyTo(t2);
+            //         vconcat(selected_3D_points, t1, selected_3D_points);
+            //         vconcat(selected_2D_points, t2, selected_2D_points);
+            //     }
+            // }
+            // cout << matched_3d_points_t.rows << ", " << point_spacing << ", " << selected_3D_points.rows << endl;
+            Mat selected_3D_points,selected_2D_points;
+            int number_of_points = points_3d.rows;
+            double points_not_to_select = 0.20;
+            int offset = 0;
+            if(number_of_points >= 20) {
+                int diff = (int)(floor(number_of_points * points_not_to_select));
+                offset = (int)(floor(diff / 2));
+                if((points_3d.rows - (2*offset)) <= 6) {
+                    offset = 0;
+                }
+            }
+            cout << points_3d.size() << ", " << offset << endl;
+            solvePnPRansac(points_3d.rowRange(offset, points_3d.rows-offset), points_2d.rowRange(offset, points_2d.rows-offset), camera_matrix,  distortion_mat, Rvec, T, false);
+            // cout << "T : " << T.t() << "\t";
+            
+            // cout << "Type R : " << Rvec.type() << endl;
+            // cout << "Type T : " << T.type() << endl;
+            Rodrigues(Rvec, R);
+            // cout << "R : " << R << endl;
+            Mat R_trans = R.t();
+            Mat T_trans = -R_trans*T;
+            // cout << T_trans.t() << T_trans.at<double>(0,1) << endl;
+            
+            if((image_seq > 1) && (((T_trans.at<double>(0,0)- T_trans_prev.at<double>(0, 0)) > 10) ||
+                ((T_trans.at<double>(1,0)- T_trans_prev.at<double>(1, 0)) > 10) ||
+                ((T_trans.at<double>(2,0)- T_trans_prev.at<double>(2, 0)) > 10))
+            ) {
+                continue;
+            }
+            T_trans.copyTo(T_trans_prev);
+            // cout << R_trans << endl << T_trans << endl;
+            Mat H = convertToHomogeneousMat(R_trans, T_trans);
+            // cout << H << endl << H.type() << endl;
+            // cout << T_trans.t() << endl;
+            // prev_H = H;
+            // cout << "Calc : " << H << endl;
+            H.convertTo(prev_H, CV_32F);
+            // prev_H = H;
+            T_trans = T_trans.t();
+            // cout << T_trans.type() << endl;
+            Point2f estimated_point = Point2f((int)(T_trans.at<double>(0,0)) + 500, (int)(T_trans.at<double>(0,2)) * (-1) + 700);
+            Point2f ground_truth_point = Point2f((int)(ground_truth_poses[image_seq].x) + 500, (int)(ground_truth_poses[image_seq].z) * (-1) + 700);
+            // circle(trajectory, estimated_point, 1, CV_RGB(255, 0, 0), FILLED);
+            // circle(trajectory, ground_truth_point, 1, CV_RGB(0, 255, 0), FILLED);
+            // imshow("Trajectory", trajectory);
+            img_num_arr.push_back(image_seq);
+            calculate_ATE(estimated_point, ground_truth_point, image_seq, prev_3d_points, trajectoryVideo);
+
+            waitKey(1);
         }
-
-        
-
-        // cout << "point2d: " << points_2d.type() << ", " << points_2d.size() << endl; 
-        // cout << "point3d: " << points_3d.type() << ", " << points_3d.size() << endl; 
-        // cout << "B : " << points_2d.size() << endl;
-        // Mat outimgTemp1;
-        // drawKeypoints(cur_left_image, tempVec2, outimgTemp1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-        // imshow("Test 2", outimgTemp1);
-        Mat Rvec, R, T;
-        // cout << matched_3d_points_t.size() << "\t->\t" << points_3d.size() << "\t|\t" << matched_keypoints_mat.size() << "\t->\t" << points_2d.size() << endl;
-        if(points_2d.rows < 4 && points_2d.cols <= 1) {
-            waitKey(0);
-            continue;
-        }
-        points_2d.convertTo(points_2d, CV_64F);
-        points_3d.convertTo(points_3d, CV_64F);
-        camera_matrix.convertTo(camera_matrix, CV_64F);
-        distortion_mat.convertTo(distortion_mat, CV_64F);
-        // cout << "Type 3pts : " << points_3d.type() << endl;
-        // cout << "Type 2pts : " << points_2d.type() << endl;
-        // cout << camera_matrix.type() << ", " << distortion_mat.type() << endl;
-
-
-        // Mat selected_3D_points,selected_2D_points;
-        // int number_of_points = points_3d.rows;
-        // int points_to_select = 20;
-        // int point_spacing = (int)(floor(number_of_points / points_to_select));
-        // flag = true;
-        // for(int i = 0; i < number_of_points; i += point_spacing) {
-        //     if(flag) {
-        //         points_3d(Range(i, i+1), Range(0, points_3d.cols)).copyTo(selected_3D_points);
-        //         points_2d(Range(i, i+1), Range(0, points_2d.cols)).copyTo(selected_2D_points);
-        //         flag = false;
-        //     } else {
-        //         Mat t1, t2;
-        //         points_3d(Range(i, i+1), Range(0, points_3d.cols)).copyTo(t1);
-        //         points_2d(Range(i, i+1), Range(0, points_2d.cols)).copyTo(t2);
-        //         vconcat(selected_3D_points, t1, selected_3D_points);
-        //         vconcat(selected_2D_points, t2, selected_2D_points);
-        //     }
-        // }
-        // cout << matched_3d_points_t.rows << ", " << point_spacing << ", " << selected_3D_points.rows << endl;
-        Mat selected_3D_points,selected_2D_points;
-        int number_of_points = points_3d.rows;
-        double points_not_to_select = 0.20;
-        int diff = (int)(floor(number_of_points * points_not_to_select));
-        int offset = (int)(floor(diff / 2));
-
-        solvePnPRansac(points_3d.rowRange(offset, points_3d.rows-offset), points_2d.rowRange(offset, points_2d.rows-offset), camera_matrix,  distortion_mat, Rvec, T, false);
-        // cout << "T : " << T.t() << "\t";
-        
-        // cout << "Type R : " << Rvec.type() << endl;
-        // cout << "Type T : " << T.type() << endl;
-        Rodrigues(Rvec, R);
-        // cout << "R : " << R << endl;
-        Mat R_trans = R.t();
-        Mat T_trans = -R_trans*T;
-        // cout << T_trans.t() << T_trans.at<double>(0,1) << endl;
-        
-        if((image_seq > 1) && (((T_trans.at<double>(0,0)- T_trans_prev.at<double>(0, 0)) > 10) ||
-            ((T_trans.at<double>(1,0)- T_trans_prev.at<double>(1, 0)) > 10) ||
-            ((T_trans.at<double>(2,0)- T_trans_prev.at<double>(2, 0)) > 10))
-        ) {
-            continue;
-        }
-        T_trans.copyTo(T_trans_prev);
-        // cout << R_trans << endl << T_trans << endl;
-        Mat H = convertToHomogeneousMat(R_trans, T_trans);
-        // cout << H << endl << H.type() << endl;
-        // cout << T_trans.t() << endl;
-        // prev_H = H;
-        // cout << "Calc : " << H << endl;
-        H.convertTo(prev_H, CV_32F);
-        // prev_H = H;
-        T_trans = T_trans.t();
-        // cout << T_trans.type() << endl;
-        Point2f estimated_point = Point2f((int)(T_trans.at<double>(0,0)) + 500, (int)(T_trans.at<double>(0,2)) * (-1) + 400);
-        Point2f ground_truth_point = Point2f((int)(ground_truth_poses[image_seq].x) + 500, (int)(ground_truth_poses[image_seq].z) * (-1) + 400);
-        // circle(trajectory, estimated_point, 1, CV_RGB(255, 0, 0), FILLED);
-        // circle(trajectory, ground_truth_point, 1, CV_RGB(0, 255, 0), FILLED);
-        // imshow("Trajectory", trajectory);
-        img_num_arr.push_back(image_seq);
-        calculate_ATE(estimated_point, ground_truth_point, image_seq, prev_3d_points);
-
-        waitKey(1);
+    } catch(Exception &e) {
+        imwrite("testing/trajectory.png", trajectory);    
     }
+    imwrite("testing/trajectory.png", trajectory);
+    trajectoryVideo.release();
+    leftVideo.release();
+    rightyVideo.release();
     plot();
     cout << "************** The End **************" << endl;
 }
 
-void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_3d_points){
+void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_3d_points, VideoWriter video){
     double x_err = abs(estimate_pt.x - gt_point.x);
     double z_err = abs(estimate_pt.y - gt_point.y);
     double tot_error = sqrt(pow(x_err, 2) + pow(z_err, 2));
@@ -355,23 +379,25 @@ void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_
     cout << "Mean Error: " << mean2 << endl;
     mean2_arr.push_back(mean2);
     string text = "Absolute Error: " + to_string(tot_error);
-    rectangle(trajectory, Point2f(580, 100) , Point2f(1000, 130), CV_RGB(0, 0, 0), cv::FILLED);
+    // rectangle(trajectory, Point2f(580, 100) , Point2f(1000, 130), CV_RGB(0, 0, 0), cv::FILLED);
+    rectangle(trajectory, Point2f(0, 869) , Point2f(420, 899), CV_RGB(0, 0, 0), cv::FILLED);
     circle(trajectory, estimate_pt, 1, CV_RGB(255, 0, 0), FILLED);
     circle(trajectory, gt_point, 1, CV_RGB(0, 255, 0), FILLED);
-    putText(trajectory, text, Point2f(600,110), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, Scalar(255,255,0), 1, 5);
-    putText(trajectory, "Red: Estimated Trajectory", Point2f(600,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(255, 0, 0), 1, 5);
-    putText(trajectory, "Green: Ground Truth", Point2f(600,80), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(0, 255, 0), 1, 5);
+    putText(trajectory, text, Point2f(20,879), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.8, Scalar(255,255,0), 1, 5);
+    putText(trajectory, "Red: Estimated Trajectory", Point2f(20,829), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(255, 0, 0), 1, 5);
+    putText(trajectory, "Green: Ground Truth", Point2f(20,849), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, CV_RGB(0, 255, 0), 1, 5);
     Mat trajTemp = trajectory.clone();
         for(int i = 0; i < prev_3d_points.cols; i++) {
             // cout << (int)(prev_3d_points.at<float>(2,i)) << endl;
             if((abs((int)(prev_3d_points.at<float>(2,i))) * (-1) < 15) && ((int)(prev_3d_points.at<float>(2,i))) * (-1) < 0) {
-                Point2f point_3d = Point2f((int)(prev_3d_points.at<float>(0,i)) + 500, (int)(prev_3d_points.at<float>(2,i)) * (-1) + 400);
+                Point2f point_3d = Point2f((int)(prev_3d_points.at<float>(0,i)) + 500, (int)(prev_3d_points.at<float>(2,i)) * (-1) + 700);
                 circle(trajTemp, point_3d, 1, CV_RGB(255, 255, 255), FILLED);
             }
         
         }
 
     imshow("Trajectory", trajTemp);
+    // video.write(trajTemp);
     cout << "----------------------" << endl;
 }
 
