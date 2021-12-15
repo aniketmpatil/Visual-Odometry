@@ -146,6 +146,7 @@ int main(int argc, char **argv) {
     Mat outimg1;
     drawKeypoints(left, keyPointVector1, outimg1, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
     imshow("ORB features 1", outimg1);
+    imwrite("testing/images/LibFeatures.png", outimg1);
     imwrite("testing/images/keyPoints1.png",outimg1);
     //
     Mat outimg2;
@@ -160,12 +161,13 @@ int main(int argc, char **argv) {
     cout << "Good Matches: " << goodMatchFlann.size() << endl;
 
     Mat img_goodmatchBrute, img_goodmatchFlann;
-    // drawMatches(left, keyPointVector1, right, keyPointVector2, goodMatchBrute, img_goodmatchBrute);
-    // imshow("good matches brute", img_goodmatchBrute);
+    drawMatches(left, keyPointVector1, right, keyPointVector2, goodMatchBrute, img_goodmatchBrute);
+    imshow("good matches brute", img_goodmatchBrute);
+    // imwrite("testing/images/matchesBrute.png",img_goodmatchBrute);
     //
     drawMatches(left, keyPointVector1, right, keyPointVector2, goodMatchFlann, img_goodmatchFlann);
     imshow("good matches flann", img_goodmatchFlann);
-    imwrite("testing/images/matches.png",img_goodmatchFlann);
+    // imwrite("testing/images/matchesFlann.png",img_goodmatchFlann);
 
     // cout << "vsbf" << endl;
     //
