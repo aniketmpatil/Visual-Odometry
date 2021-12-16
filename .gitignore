@@ -1,6 +1,7 @@
 /testing/build
 /src/build
 /dataset/sequences
+testing/images
 testing/leftVideo.avi
 testing/leftVideo.gif
 testing/leftVideoCropped.gif
