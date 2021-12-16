@@ -3,7 +3,7 @@
 	            PROJECT TITLE: VISUAL ODOMETRY USING CLASSICAL COMPUTER VISION
 	                        TEAM MEMBERS:   ANIKET PATIL, 
                                             CHINMAY TODANKAR, 
-                                            NIHAL NAVALE,
+                                            NIHAL SUNEEL NAVALE,
                                             PRATHAMESH BHAMARE
 
 	DESCRIPTION: This Project demonstrates an implementation of Stereo Visual Odometry
