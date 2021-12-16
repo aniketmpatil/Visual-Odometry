@@ -1,14 +1,17 @@
-/*
-	RBE 549 -- COMPUTER VISION, FALL 2021
-	PROJECT TITLE: VISUAL ODOMETRY USING CLASSICAL COMPUTER VISION
-	TEAM MEMBERS: CHINMAY TODANKAR, PRATHAMESH BHAMARE, ANIKET PATIL, NIHAL NAVALE
+/*******************************************************************************************************
+	                        RBE 549 -- COMPUTER VISION, FALL 2021
+	            PROJECT TITLE: VISUAL ODOMETRY USING CLASSICAL COMPUTER VISION
+	                        TEAM MEMBERS:   ANIKET PATIL, 
+                                            CHINMAY TODANKAR, 
+                                            NIHAL NAVALE,
+                                            PRATHAMESH BHAMARE
 
 	DESCRIPTION: This Project demonstrates an implementation of Stereo Visual Odometry
 	using Classical Computer Vision in order to detect the egomotion of a camera system.
 	In this implementation, we use a stereo camera setup in order to obtain images of the environment
 	around the camera system. As the camera system moves in the world, the trajectory of the camera is
 	computed.
-*/
+*******************************************************************************************************/
 
 // Include all required libraries
 // OpenCV (Computer Vision Library), iostream & fstream for input/output and file handling
