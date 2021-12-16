@@ -29,6 +29,7 @@ void calculate_ATE(Point2f estimate_pt, Point2f gt_point, int img_seq, Mat prev_
 void getMatchesFlann(Mat prev_left_descriptors, Mat prev_right_descriptors, vector<DMatch> &stereo_matches);
 void getMatchesBrute(Mat descriptors1, Mat descriptors2, vector<DMatch> &goodMatchBrute);
 void getProjectionMatrices(string path);
+void Visual_Odometry(vector<string> left_images_names, vector<string> right_images_names);
 vector<string> split (string s, string delimiter);
 vector<Point3f> import_GT(string seq);
 Mat convertToHomogeneousMat(Mat R, Mat T);
@@ -52,36 +53,42 @@ VideoWriter rightyVideo;
 // Main Function
 int main(int argc, char** argv) {
     
+    // Using opencv function: glob to generate a vector of string containing path to all the image sequences
     string seq = argv[1];
     string path = "dataset/sequences/"+seq;
     string left_images_path = path+"/image_0/*.png";
     string right_images_path = path+"/image_1/*.png";
-    ground_truth_poses = import_GT(seq);
-    getProjectionMatrices(path);
     vector<string> left_images_names;
     vector<string> right_images_names;
     glob(left_images_path, left_images_names);
     glob(right_images_path, right_images_names);
-    cout << prev_H << endl;
+
+    ground_truth_poses = import_GT(seq);
+    getProjectionMatrices(path);
     
+    // Decompose the Projection Matrix into Camera Matrix, Rotation Matrix and Translation Vector
     decomposeProjectionMatrix(lpm, camera_matrix, rot_matrix, trans_vect);
     cout << "Cam Mat: " << camera_matrix << endl;
     cout << "Rot Mat: " << rot_matrix << endl;
     cout << "Trans Mat: " << trans_vect << endl;
-    distortion_mat = Mat::zeros(4,1,CV_64F);
+    distortion_mat = Mat::zeros(4,1,CV_64F);                // Assuming there is no distortion in the images
 
+    // ************* Code Block to initialize the logic to generate a video of trajectory *************
     Mat left_image = imread(left_images_names[0], IMREAD_GRAYSCALE);
     Mat right_image = imread(right_images_names[0], IMREAD_GRAYSCALE);
 
     trajectoryVideo = VideoWriter("testing/trajectoryVideo.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, Size(1000,1000));
     leftVideo = VideoWriter("testing/leftVideo.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, left_image.size());
     rightyVideo = VideoWriter("testing/rightVideo.avi", cv::VideoWriter::fourcc('M','J','P','G'), 10, right_image.size());
+    // ************* End of Code Block *************
 
     Visual_Odometry(left_images_names, right_images_names);
 
+    // Release the Video Writers
     trajectoryVideo.release();
     leftVideo.release();
     rightyVideo.release();
+
     cout << "************** The End **************" << endl;
 }
 
@@ -89,6 +96,8 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
     /*
         Function Operation: Main Visual Odometry pipeline implementation
     */
+
+
     vector<KeyPoint> prev_left_keypoints, prev_right_keypoints, cur_left_keypoints;
     Mat prev_left_descriptors,prev_right_descriptors, cur_left_descriptors;
     Ptr<FeatureDetector> detector = ORB::create(1000);
@@ -97,10 +106,13 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
     try {
         for(int image_seq = 1; image_seq < left_images_names.size(); image_seq++) {
             // cout << "Image : " << image_seq << endl;
+
+            // Read The Images
             Mat prev_left_image = imread(left_images_names[image_seq-1], IMREAD_GRAYSCALE);
             Mat prev_right_image = imread(right_images_names[image_seq-1], IMREAD_GRAYSCALE);
             Mat cur_left_image = imread(left_images_names[image_seq], IMREAD_GRAYSCALE);
 
+            // ************* Feature Keypoint and Descriptor Detection *************
             detector->detect(prev_left_image, prev_left_keypoints);
             detector->detect(prev_right_image, prev_right_keypoints);
             detector->detect(cur_left_image, cur_left_keypoints);
@@ -108,12 +120,16 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
             detector->detectAndCompute(prev_right_image, Mat(), prev_right_keypoints, prev_right_descriptors, true);
             detector->detectAndCompute(cur_left_image, Mat(), cur_left_keypoints, cur_left_descriptors, true);
             // descriptor->compute(cur_left_image, cur_left_keypoints, cur_left_descriptors);
+            // ************* End of Feature Detection *************
 
+            // ************* Feature Matching *************
             vector<DMatch> stereo_matches;
             getMatchesFlann(prev_left_descriptors, prev_right_descriptors, stereo_matches);
             // getMatchesBrute(prev_left_descriptors, prev_right_descriptors, stereo_matches);
             // cout << "Matches : " << stereo_matches.size() << endl;
+            // ************* End of Feature Matching *************
 
+            // ************* Get the keypoints of matches *************
             vector<Point2f> stereoPointL, stereoPointR, stereoPointL1;
             vector<KeyPoint> matched_l_keypoints, matched_r_keypoints;
             for(int i = 0; i < stereo_matches.size(); i++) {
@@ -122,27 +138,45 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
                 matched_l_keypoints.push_back(prev_left_keypoints[stereo_matches[i].queryIdx]);
                 matched_r_keypoints.push_back(prev_right_keypoints[stereo_matches[i].trainIdx]);
             }
+            Mat outimgTemp;
+            drawKeypoints(prev_left_image, matched_l_keypoints, outimgTemp, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+            imshow("Left Keypoints", outimgTemp);
+            // leftVideo.write(outimgTemp);
+
+            Mat outimgTemp2;
+            drawKeypoints(prev_right_image, matched_r_keypoints, outimgTemp2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
+            imshow("Right Keypoints", outimgTemp2);
+            // rightyVideo.write(outimgTemp2);
+
+            // ************* End *************
             // cout << stereoPointL.size() << ", " << stereoPointR.size() << endl;
+
+            // ************* Triangulate Points *************
             prev_3d_points.convertTo(prev_3d_points, CV_32F);
             triangulatePoints(lpm, rpm, stereoPointL, stereoPointR, prev_3d_points);
-            
+            // ************* End *************
+
             // cout << prev_3d_points.size() << endl;
             // cout << prev_3d_points.type() << endl;
+
+            // ************* Convert Homogeneous 3D points into Non Homogeneous 3D Points *************
             for(int i = 0; i < prev_3d_points.cols; i++) {
                 prev_3d_points.at<float>(0,i) = prev_3d_points.at<float>(0,i) / prev_3d_points.at<float>(3,i);
                 prev_3d_points.at<float>(1,i) = prev_3d_points.at<float>(1,i) / prev_3d_points.at<float>(3,i);
                 prev_3d_points.at<float>(2,i) = prev_3d_points.at<float>(2,i) / prev_3d_points.at<float>(3,i);   
             }
+            // ************* End *************
 
+            // ************* Convert 3D Points From the Camera Coordinates to World Coordinates By Multiplying them with Homogeneous Transformation Matrix From Previous Iteration *************
             Mat prev_3d_Pts_copy;
             prev_3d_points.copyTo(prev_3d_Pts_copy);
-
             for(int i=0;i<prev_3d_points.cols;i++)
             {
                 prev_3d_points.at<float>(0,i)=prev_H.at<float>(0, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(0, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(0, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(0, 3);
                 prev_3d_points.at<float>(1,i)=prev_H.at<float>(1, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(1, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(1, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(1, 3);
                 prev_3d_points.at<float>(2,i)=prev_H.at<float>(2, 0)*prev_3d_Pts_copy.at<float>(0,i)+prev_H.at<float>(2, 1)*prev_3d_Pts_copy.at<float>(1,i)+prev_H.at<float>(2, 2)*prev_3d_Pts_copy.at<float>(2,i)+prev_H.at<float>(2, 3);
             }
+            // ************* End *************
 
             vector<Point2f> matched_keypoint;
             Mat matched_3d_point;
@@ -150,7 +184,7 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
             Mat status1, err1;
             bool flag = true;
 
-            //********** Optical Flow Start ****************
+            // ************* Optical Flow Start *************
             calcOpticalFlowPyrLK(prev_left_image, cur_left_image, stereoPointL, stereoPointL1, status1, err1);
             status1.convertTo(status1,CV_32F);
             
@@ -167,24 +201,15 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
                     }
                 }
             }
-            //*********** Optical Flow End *****************
+            // ************* Optical Flow End *************
 
-            Mat outimgTemp;
-            drawKeypoints(prev_left_image, matched_l_keypoints, outimgTemp, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-            imshow("Left Keypoints", outimgTemp);
-            // leftVideo.write(outimgTemp);
-
-            Mat outimgTemp2;
-            drawKeypoints(prev_right_image, matched_r_keypoints, outimgTemp2, Scalar::all(-1), DrawMatchesFlags::DEFAULT);
-            imshow("Right Keypoints", outimgTemp2);
-            // rightyVideo.write(outimgTemp2);
-
+            // ************* Filter out 3D Points (z values should not be negative, all coordinates (x, y, z) should not be huge values)
             Mat matched_keypoints_mat = Mat(matched_keypoint);
             matched_keypoints_mat = matched_keypoints_mat.reshape(1);
             Mat matched_3d_points_t = matched_3d_point.t();
             // cout << "matchedKeyPM:" << matched_keypoints_mat.type() << ", " << matched_keypoints_mat.size() << endl;
             // cout << "matched3DPM:" << matched_3d_points_t.type() << ", " << matched_3d_points_t.size() << endl;
-            
+            //       
             Mat points_3d;
             Mat points_2d;
             flag = true;
@@ -207,6 +232,7 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
                     }
                 }
             }
+            // ************* End *************
 
             // cout << "point2d: " << points_2d.type() << ", " << points_2d.size() << endl; 
             // cout << "point3d: " << points_3d.type() << ", " << points_3d.size() << endl; 
@@ -216,6 +242,7 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
                 waitKey(0);
                 continue;
             }
+
             points_2d.convertTo(points_2d, CV_64F);
             points_3d.convertTo(points_3d, CV_64F);
             camera_matrix.convertTo(camera_matrix, CV_64F);
@@ -224,6 +251,7 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
             // cout << "Type 2pts : " << points_2d.type() << endl;
             // cout << camera_matrix.type() << ", " << distortion_mat.type() << endl;
 
+            // ************* Filter out few values from start and end *************
             Mat selected_3D_points,selected_2D_points;
             int number_of_points = points_3d.rows;
             double points_not_to_select = 0.20;
@@ -235,16 +263,22 @@ void Visual_Odometry(vector<string> left_images_names, vector<string> right_imag
                     offset = 0;
                 }
             }
+            // ************* End *************
             
+            // ************* Get Estimated Rotation and Translation from 3D and 2D Points using Perspective n Point Method
             solvePnPRansac(points_3d.rowRange(offset, points_3d.rows-offset), points_2d.rowRange(offset, points_2d.rows-offset), camera_matrix,  distortion_mat, Rvec, T, false);
             
             // cout << "Type R : " << Rvec.type() << endl;
             // cout << "Type T : " << T.type() << endl;
+
+            // Convert the Rotation Vector to Rotation Matrix
             Rodrigues(Rvec, R);
 
+            // ************* Get the Inverse of R and T (so that we get location of camera in world instead of world in camera) *************
             Mat R_trans = R.t();
             Mat T_trans = -R_trans*T;
             
+            // ************* Ignore if the change in position is too large *************
             if((image_seq > 1) && (((T_trans.at<double>(0,0)- T_trans_prev.at<double>(0, 0)) > 10) ||
                 ((T_trans.at<double>(1,0)- T_trans_prev.at<double>(1, 0)) > 10) ||
                 ((T_trans.at<double>(2,0)- T_trans_prev.at<double>(2, 0)) > 10))
